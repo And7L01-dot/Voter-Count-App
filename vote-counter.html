@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vote Counter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a22;
+      --surface2: #22222e;
+      --border: #2e2e3e;
+      --accent: #7c6af7;
+      --accent-dim: #3d3478;
+      --plus: #3ecf8e;
+      --minus: #f7706a;
+      --text: #e8e8f0;
+      --muted: #7a7a9a;
+      --total-bg: #16161f;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 16px 80px;
+    }
+
+    header { text-align: center; margin-bottom: 48px; }
+    header h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.03em; }
+    header h1 span { color: var(--accent); }
+    header p { margin-top: 8px; color: var(--muted); font-size: 0.95rem; }
+
+    .total-banner {
+      background: var(--total-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 40px;
+      font-family: 'Space Mono', monospace;
+    }
+    .total-label { color: var(--muted); font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; }
+    .total-count { font-size: 2rem; font-weight: 700; color: var(--accent); min-width: 3ch; text-align: right; }
+
+    .options-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      width: 100%;
+      max-width: 860px;
+    }
+
+    .option-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px 24px 20px;
+      min-width: 180px;
+      flex: 1 1 180px;
+      max-width: 240px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .option-card:hover { border-color: var(--accent-dim); transform: translateY(-2px); }
+    .option-card.bump { animation: bump 0.22s ease; }
+    @keyframes bump {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+      100% { transform: scale(1); }
+    }
+
+    .delete-btn {
+      position: absolute; top: 10px; right: 12px;
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; font-size: 1.1rem; line-height: 1;
+      padding: 2px 5px; border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .delete-btn:hover { color: var(--minus); background: rgba(247,112,106,0.1); }
+
+    .option-label {
+      font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em;
+      text-align: center; word-break: break-word; cursor: pointer;
+      border-bottom: 1px dashed transparent; transition: border-color 0.15s;
+      padding: 2px 4px; border-radius: 4px;
+    }
+    .option-label:hover { border-color: var(--accent); }
+
+    .label-input {
+      font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 600;
+      background: var(--surface2); border: 1px solid var(--accent); border-radius: 6px;
+      color: var(--text); text-align: center; padding: 4px 8px; width: 100%; outline: none;
+    }
+
+    .vote-count {
+      font-family: 'Space Mono', monospace; font-size: 2.6rem; font-weight: 700;
+      color: var(--text); min-height: 1.2em; text-align: center; transition: color 0.2s;
+    }
+
+    .pct-wrap { width: 100%; background: var(--surface2); border-radius: 999px; height: 5px; overflow: hidden; }
+    .pct-bar { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.35s ease; }
+    .pct-label { font-size: 0.72rem; color: var(--muted); font-family: 'Space Mono', monospace; text-align: center; }
+
+    .vote-btns { display: flex; gap: 10px; }
+    .vote-btn {
+      width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer;
+      font-size: 1.4rem; font-weight: 700; display: flex; align-items: center;
+      justify-content: center; transition: transform 0.1s, opacity 0.15s; line-height: 1;
+    }
+    .vote-btn:active { transform: scale(0.88); }
+    .vote-btn.plus { background: rgba(62,207,142,0.15); color: var(--plus); border: 1.5px solid rgba(62,207,142,0.3); }
+    .vote-btn.plus:hover { background: rgba(62,207,142,0.25); }
+    .vote-btn.minus { background: rgba(247,112,106,0.1); color: var(--minus); border: 1.5px solid rgba(247,112,106,0.25); }
+    .vote-btn.minus:hover { background: rgba(247,112,106,0.2); }
+    .vote-btn.minus:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ── Chart Section ── */
+    .chart-section {
+      margin-top: 48px;
+      width: 100%;
+      max-width: 700px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px 24px;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .chart-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .chart-type-toggle {
+      display: flex;
+      gap: 6px;
+    }
+
+    .toggle-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 5px 14px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .toggle-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .toggle-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
+    #chartCanvas { width: 100% !important; }
+
+    /* ── Bottom actions ── */
+    .add-section {
+      margin-top: 40px;
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .add-input {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; color: var(--text); font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.95rem; padding: 12px 16px; outline: none; transition: border-color 0.2s;
+    }
+    .add-input:focus { border-color: var(--accent); }
+    .add-input::placeholder { color: var(--muted); }
+    .add-btn {
+      background: var(--accent); color: #fff; border: none; border-radius: 12px;
+      padding: 12px 20px; font-family: 'Space Grotesk', sans-serif; font-size: 0.95rem;
+      font-weight: 600; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+    }
+    .add-btn:hover { opacity: 0.88; }
+    .add-btn:active { transform: scale(0.96); }
+
+    .action-row {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .reset-btn {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 10px; padding: 9px 22px; font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.85rem; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+    }
+    .reset-btn:hover { border-color: var(--minus); color: var(--minus); }
+
+    .excel-btn {
+      background: none; border: 1px solid #1e6b3e; color: #3ecf8e;
+      border-radius: 10px; padding: 9px 22px; font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .excel-btn:hover { background: rgba(62,207,142,0.1); }
+    .excel-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .empty {
+      color: var(--muted); font-size: 0.9rem; text-align: center;
+      padding: 32px; border: 1px dashed var(--border); border-radius: 18px;
+      width: 100%; max-width: 400px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--plus); color: #0a2e1f; font-weight: 600; font-size: 0.85rem;
+      padding: 10px 22px; border-radius: 999px; opacity: 0;
+      transition: opacity 0.25s, transform 0.25s; pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 480px) { .option-card { max-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Vote <span>Counter</span></h1>
+  <p>Click a label to rename · Add as many options as you need</p>
+</header>
+
+<div class="total-banner">
+  <span class="total-label">Total votes</span>
+  <span class="total-count" id="total">0</span>
+</div>
+
+<div class="options-grid" id="grid"></div>
+
+<!-- Chart -->
+<div class="chart-section">
+  <div class="chart-header">
+    <span class="chart-title">📊 Results Chart</span>
+    <div class="chart-type-toggle">
+      <button class="toggle-btn active" id="btnBar" onclick="setChartType('bar')">Bar</button>
+      <button class="toggle-btn" id="btnPie" onclick="setChartType('pie')">Pie</button>
+    </div>
+  </div>
+  <canvas id="chartCanvas" height="280"></canvas>
+</div>
+
+<!-- Add option -->
+<div class="add-section">
+  <input class="add-input" id="newOptionInput" type="text" placeholder="New option name…" maxlength="40" />
+  <button class="add-btn" onclick="addOption()">+ Add</button>
+</div>
+
+<div class="action-row">
+  <button class="reset-btn" onclick="resetAll()">Reset all votes</button>
+  <button class="excel-btn" id="excelBtn" onclick="exportExcel()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+    Export to Excel
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Palette for chart bars/slices ──
+  const PALETTE = [
+    '#7c6af7','#3ecf8e','#f7706a','#f7c96a','#6ac8f7',
+    '#f76ab0','#a8f76a','#f7926a','#6af7d4','#c46af7'
+  ];
+
+  let options = [
+    { id: 1, label: 'Yes', votes: 0 },
+    { id: 2, label: 'No',  votes: 0 },
+  ];
+  let nextId = 3;
+  let chartType = 'bar';
+  let chartInstance = null;
+
+  // ── Helpers ──
+  function totalVotes() { return options.reduce((s, o) => s + o.votes, 0); }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ── Render cards ──
+  function render() {
+    const grid = document.getElementById('grid');
+    const total = totalVotes();
+    document.getElementById('total').textContent = total;
+    document.getElementById('excelBtn').disabled = total === 0;
+
+    grid.innerHTML = '';
+    if (options.length === 0) {
+      grid.innerHTML = '<div class="empty">No options yet — add one below.</div>';
+      renderChart();
+      return;
+    }
+
+    options.forEach((opt, i) => {
+      const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0;
+      const color = PALETTE[i % PALETTE.length];
+      const card = document.createElement('div');
+      card.className = 'option-card';
+      card.id = `card-${opt.id}`;
+      card.innerHTML = `
+        <button class="delete-btn" onclick="deleteOption(${opt.id})" title="Remove option">✕</button>
+        <span class="option-label" onclick="startEdit(${opt.id})" title="Click to rename">${escHtml(opt.label)}</span>
+        <div class="vote-count">${opt.votes}</div>
+        <div style="width:100%">
+          <div class="pct-wrap"><div class="pct-bar" style="width:${pct}%;background:${color}"></div></div>
+          <div class="pct-label" style="margin-top:5px">${pct}%</div>
+        </div>
+        <div class="vote-btns">
+          <button class="vote-btn minus" onclick="vote(${opt.id}, -1)" ${opt.votes === 0 ? 'disabled' : ''}>−</button>
+          <button class="vote-btn plus"  onclick="vote(${opt.id},  1)">+</button>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    renderChart();
+  }
+
+  // ── Chart ──
+  function setChartType(type) {
+    chartType = type;
+    document.getElementById('btnBar').classList.toggle('active', type === 'bar');
+    document.getElementById('btnPie').classList.toggle('active', type === 'pie');
+    renderChart();
+  }
+
+  function renderChart() {
+    const canvas = document.getElementById('chartCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.offsetWidth || 640;
+    const H = 280;
+    canvas.width = W * window.devicePixelRatio;
+    canvas.height = H * window.devicePixelRatio;
+    canvas.style.height = H + 'px';
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+    ctx.clearRect(0, 0, W, H);
+
+    const total = totalVotes();
+    const hasData = options.length > 0 && total > 0;
+
+    if (!hasData) {
+      ctx.fillStyle = '#7a7a9a';
+      ctx.font = '500 14px Space Grotesk, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('No votes yet — start voting to see the chart', W / 2, H / 2);
+      return;
+    }
+
+    if (chartType === 'bar') drawBar(ctx, W, H, total);
+    else drawPie(ctx, W, H, total);
+  }
+
+  function drawBar(ctx, W, H, total) {
+    const pad = { top: 20, right: 20, bottom: 60, left: 44 };
+    const chartW = W - pad.left - pad.right;
+    const chartH = H - pad.top - pad.bottom;
+    const maxVotes = Math.max(...options.map(o => o.votes), 1);
+    const barW = Math.min(60, (chartW / options.length) * 0.55);
+    const gap = chartW / options.length;
+
+    // Grid lines
+    const steps = 4;
+    for (let i = 0; i <= steps; i++) {
+      const y = pad.top + chartH - (i / steps) * chartH;
+      const val = Math.round((i / steps) * maxVotes);
+      ctx.strokeStyle = '#2e2e3e';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + chartW, y); ctx.stroke();
+      ctx.fillStyle = '#7a7a9a';
+      ctx.font = '11px Space Mono, monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(val, pad.left - 6, y + 4);
+    }
+
+    // Bars
+    options.forEach((opt, i) => {
+      const color = PALETTE[i % PALETTE.length];
+      const barH = (opt.votes / maxVotes) * chartH;
+      const x = pad.left + gap * i + gap / 2 - barW / 2;
+      const y = pad.top + chartH - barH;
+
+      // Bar shadow glow
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      const grad = ctx.createLinearGradient(x, y, x, y + barH);
+      grad.addColorStop(0, color);
+      grad.addColorStop(1, color + '55');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(x, y, barW, barH, [6, 6, 0, 0]);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Value label on top
+      ctx.fillStyle = '#e8e8f0';
+      ctx.font = 'bold 13px Space Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(opt.votes, x + barW / 2, y - 6);
+
+      // X label
+      ctx.fillStyle = '#b0b0c8';
+      ctx.font = '500 12px Space Grotesk, sans-serif';
+      const label = opt.label.length > 10 ? opt.label.slice(0, 9) + '…' : opt.label;
+      ctx.fillText(label, x + barW / 2, pad.top + chartH + 20);
+
+      // Pct label
+      const pct = Math.round((opt.votes / total) * 100);
+      ctx.fillStyle = '#7a7a9a';
+      ctx.font = '11px Space Mono, monospace';
+      ctx.fillText(pct + '%', x + barW / 2, pad.top + chartH + 38);
+    });
+  }
+
+  function drawPie(ctx, W, H, total) {
+    const cx = W / 2, cy = H / 2 - 10;
+    const r = Math.min(W / 2, H / 2) - 40;
+    let startAngle = -Math.PI / 2;
+
+    options.forEach((opt, i) => {
+      if (opt.votes === 0) return;
+      const slice = (opt.votes / total) * 2 * Math.PI;
+      const color = PALETTE[i % PALETTE.length];
+      const mid = startAngle + slice / 2;
+
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, startAngle, startAngle + slice);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Stroke between slices
+      ctx.strokeStyle = '#0f0f13';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Percentage label
+      const pct = Math.round((opt.votes / total) * 100);
+      if (pct >= 5) {
+        const lx = cx + Math.cos(mid) * r * 0.65;
+        const ly = cy + Math.sin(mid) * r * 0.65;
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 13px Space Mono, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(pct + '%', lx, ly);
+      }
+
+      startAngle += slice;
+    });
+
+    // Legend below
+    const legendY = cy + r + 16;
+    const itemW = 100;
+    const startX = cx - (Math.min(options.length, 5) * itemW) / 2;
+    options.forEach((opt, i) => {
+      const col = i % 5;
+      const row = Math.floor(i / 5);
+      const lx = startX + col * itemW;
+      const ly = legendY + row * 20;
+      if (ly + 20 > H) return;
+      ctx.fillStyle = PALETTE[i % PALETTE.length];
+      ctx.beginPath(); ctx.roundRect(lx, ly, 10, 10, 2); ctx.fill();
+      ctx.fillStyle = '#b0b0c8';
+      ctx.font = '11px Space Grotesk, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const label = opt.label.length > 9 ? opt.label.slice(0, 8) + '…' : opt.label;
+      ctx.fillText(label, lx + 14, ly + 5);
+    });
+  }
+
+  // ── Vote / CRUD ──
+  function vote(id, delta) {
+    const opt = options.find(o => o.id === id);
+    if (!opt) return;
+    opt.votes = Math.max(0, opt.votes + delta);
+    const card = document.getElementById(`card-${id}`);
+    if (card) { card.classList.remove('bump'); void card.offsetWidth; card.classList.add('bump'); }
+    render();
+  }
+
+  function deleteOption(id) { options = options.filter(o => o.id !== id); render(); }
+
+  function addOption() {
+    const input = document.getElementById('newOptionInput');
+    const label = input.value.trim();
+    if (!label) { input.focus(); return; }
+    options.push({ id: nextId++, label, votes: 0 });
+    input.value = '';
+    render();
+  }
+
+  function resetAll() { options.forEach(o => o.votes = 0); render(); }
+
+  function startEdit(id) {
+    const opt = options.find(o => o.id === id);
+    if (!opt) return;
+    const card = document.getElementById(`card-${id}`);
+    const span = card.querySelector('.option-label');
+    const inp = document.createElement('input');
+    inp.className = 'label-input';
+    inp.value = opt.label;
+    inp.maxLength = 40;
+    span.replaceWith(inp);
+    inp.focus(); inp.select();
+    const commit = () => { const v = inp.value.trim(); if (v) opt.label = v; render(); };
+    inp.addEventListener('blur', commit);
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') inp.blur();
+      if (e.key === 'Escape') { inp.value = opt.label; inp.blur(); }
+    });
+  }
+
+  // ── Excel Export ──
+  function exportExcel() {
+    const total = totalVotes();
+    if (total === 0) return;
+
+    const wsData = [
+      ['Option', 'Votes', 'Percentage'],
+      ...options.map(o => [
+        o.label,
+        o.votes,
+        total > 0 ? (o.votes / total * 100).toFixed(1) + '%' : '0%'
+      ]),
+      [],
+      ['TOTAL', total, '100%']
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Column widths
+    ws['!cols'] = [{ wch: 20 }, { wch: 10 }, { wch: 14 }];
+
+    // Style header row (bold simulation via cell metadata — xlsx-style limited in free lib)
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Vote Results');
+
+    const date = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `vote-results-${date}.xlsx`);
+    showToast('✓ Excel file downloaded!');
+  }
+
+  // Enter key
+  document.getElementById('newOptionInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addOption();
+  });
+
+  // Redraw chart on resize
+  window.addEventListener('resize', () => renderChart());
+
+  render();
+</script>
+</body>
+</html>
