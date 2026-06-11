@@ -1,422 +1,526 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vote Counter</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <title>VoteTracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+ 
+    /* ── Themes ── */
     :root {
-      --bg: #0f0f13;
-      --surface: #1a1a22;
-      --surface2: #22222e;
-      --border: #2e2e3e;
-      --accent: #7c6af7;
-      --accent-dim: #3d3478;
-      --plus: #3ecf8e;
-      --minus: #f7706a;
-      --text: #e8e8f0;
-      --muted: #7a7a9a;
-      --total-bg: #16161f;
-      --chart-grid: #2e2e3e;
-      --chart-label: #7a7a9a;
-      --chart-value: #e8e8f0;
-      --chart-bg: #1a1a22;
+      --bg:        #f7f5f0;
+      --surface:   #ffffff;
+      --surface2:  #f2efe9;
+      --border:    #ddd8ce;
+      --border2:   #c9c3b6;
+      --accent:    #2c4a7c;
+      --accent-lt: #e8edf5;
+      --positive:  #1e5c38;
+      --negative:  #8b2020;
+      --text:      #1a1810;
+      --text2:     #4a4740;
+      --muted:     #9a9690;
+      --divider:   #e8e4dc;
+      --shadow:    rgba(0,0,0,0.06);
+      --shadow2:   rgba(0,0,0,0.12);
     }
-
-    [data-theme="light"] {
-      --bg: #f4f4f8;
-      --surface: #ffffff;
-      --surface2: #eeeef4;
-      --border: #dddde8;
-      --accent: #6355e0;
-      --accent-dim: #c5c0f5;
-      --plus: #1a9e62;
-      --minus: #d94f4a;
-      --text: #1a1a2e;
-      --muted: #888899;
-      --total-bg: #ececf4;
-      --chart-grid: #dddde8;
-      --chart-label: #888899;
-      --chart-value: #1a1a2e;
-      --chart-bg: #ffffff;
+    [data-theme="dark"] {
+      --bg:        #141210;
+      --surface:   #1e1c19;
+      --surface2:  #252320;
+      --border:    #2e2c28;
+      --border2:   #3a3834;
+      --accent:    #8baad4;
+      --accent-lt: #1e2630;
+      --positive:  #5aad7a;
+      --negative:  #c97070;
+      --text:      #e8e4dc;
+      --text2:     #b0ab9e;
+      --muted:     #706c65;
+      --divider:   #2a2826;
+      --shadow:    rgba(0,0,0,0.3);
+      --shadow2:   rgba(0,0,0,0.5);
     }
-
+ 
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Inter', sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 48px 16px 80px;
+      padding: 0 0 80px;
       transition: background 0.3s, color 0.3s;
     }
-
-    /* ── Top bar ── */
-    .top-bar {
-      position: fixed;
-      top: 16px; right: 16px;
-      display: flex;
-      gap: 8px;
-      z-index: 100;
-    }
-
-    .theme-btn {
+ 
+    /* ── Nav bar ── */
+    .navbar {
+      width: 100%;
       background: var(--surface);
-      border: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 4px var(--shadow);
+    }
+    .navbar-brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
       color: var(--text);
-      border-radius: 10px;
-      padding: 8px 14px;
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.82rem;
-      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    .navbar-brand span { color: var(--accent); }
+    .navbar-right { display: flex; align-items: center; gap: 8px; }
+ 
+    .theme-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text2);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      letter-spacing: 0.02em;
     }
-    .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-    header { text-align: center; margin-bottom: 48px; }
-    header h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.03em; }
-    header h1 span { color: var(--accent); }
-    header p { margin-top: 8px; color: var(--muted); font-size: 0.95rem; }
-
-    .total-banner {
-      background: var(--total-bg);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px 32px;
+    .theme-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-lt); }
+ 
+    /* ── Page wrapper ── */
+    .page { width: 100%; max-width: 960px; padding: 48px 24px 0; }
+ 
+    /* ── Header ── */
+    .page-header { margin-bottom: 40px; }
+    .page-header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      line-height: 1.15;
+    }
+    .page-header p { margin-top: 8px; color: var(--muted); font-size: 0.88rem; letter-spacing: 0.01em; }
+    .header-rule { width: 48px; height: 3px; background: var(--accent); margin-top: 16px; border-radius: 2px; }
+ 
+    /* ── Stats row ── */
+    .stats-row {
       display: flex;
-      align-items: center;
       gap: 16px;
       margin-bottom: 40px;
-      font-family: 'Space Mono', monospace;
-    }
-    .total-label { color: var(--muted); font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; }
-    .total-count { font-size: 2rem; font-weight: 700; color: var(--accent); min-width: 3ch; text-align: right; }
-
-    .options-grid {
-      display: flex;
       flex-wrap: wrap;
-      gap: 20px;
-      justify-content: center;
-      width: 100%;
-      max-width: 900px;
     }
-
-    .option-card {
+    .stat-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 28px 24px 20px;
-      min-width: 180px;
-      flex: 1 1 180px;
-      max-width: 240px;
+      border-radius: 8px;
+      padding: 16px 24px;
+      box-shadow: 0 1px 3px var(--shadow);
+      min-width: 160px;
+    }
+    .stat-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--accent);
+      line-height: 1;
+    }
+ 
+    /* ── Section title ── */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--divider);
+    }
+ 
+    /* ── Options table-style grid ── */
+    .options-grid {
       display: flex;
       flex-direction: column;
+      gap: 10px;
+      margin-bottom: 40px;
+    }
+ 
+    .option-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
+      box-shadow: 0 1px 3px var(--shadow);
+      transition: border-color 0.2s, box-shadow 0.2s;
       position: relative;
-      transition: border-color 0.2s, transform 0.15s, background 0.3s;
     }
-    .option-card:hover { border-color: var(--accent-dim); transform: translateY(-2px); }
-    .option-card.bump { animation: bump 0.22s ease; }
-    @keyframes bump { 0%{transform:scale(1)} 50%{transform:scale(1.04)} 100%{transform:scale(1)} }
-
-    .delete-btn {
-      position: absolute; top: 10px; right: 12px;
-      background: none; border: none; color: var(--muted);
-      cursor: pointer; font-size: 1.1rem; line-height: 1;
-      padding: 2px 5px; border-radius: 6px;
-      transition: color 0.15s, background 0.15s;
-    }
-    .delete-btn:hover { color: var(--minus); background: rgba(247,112,106,0.1); }
-
-    /* Color picker row */
-    .color-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .option-row:hover { border-color: var(--border2); box-shadow: 0 2px 8px var(--shadow2); }
+    .option-row.bump { animation: bump 0.18s ease; }
+    @keyframes bump { 0%{transform:translateX(0)} 30%{transform:translateX(3px)} 100%{transform:translateX(0)} }
+ 
+    /* Color swatch */
     .color-swatch {
-      width: 20px; height: 20px;
-      border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.2);
+      width: 14px; height: 32px;
+      border-radius: 3px;
       cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s;
       position: relative;
       flex-shrink: 0;
+      transition: opacity 0.15s;
     }
-    .color-swatch:hover { transform: scale(1.2); box-shadow: 0 0 0 3px var(--accent-dim); }
+    .color-swatch:hover { opacity: 0.75; }
     .color-swatch input[type=color] {
-      position: absolute; inset: 0; opacity: 0; cursor: pointer;
-      width: 100%; height: 100%; border: none; padding: 0;
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
     }
-
+ 
+    /* Option info */
+    .option-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
     .option-label {
-      font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em;
-      text-align: center; word-break: break-word; cursor: pointer;
-      border-bottom: 1px dashed transparent; transition: border-color 0.15s;
-      padding: 2px 4px; border-radius: 4px; color: var(--text);
+      font-size: 0.95rem; font-weight: 600; color: var(--text);
+      cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+      width: fit-content;
     }
-    .option-label:hover { border-color: var(--accent); }
+    .option-label .edit-icon { color: var(--muted); font-size: 0.75rem; opacity: 0; transition: opacity 0.15s; }
+    .option-label:hover .edit-icon { opacity: 1; }
     .label-input {
-      font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 600;
-      background: var(--surface2); border: 1px solid var(--accent); border-radius: 6px;
-      color: var(--text); text-align: center; padding: 4px 8px; width: 100%; outline: none;
+      font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 600;
+      background: var(--surface2); border: 1px solid var(--accent); border-radius: 5px;
+      color: var(--text); padding: 3px 8px; outline: none; width: 160px;
     }
-
+    .option-bar-row { display: flex; align-items: center; gap: 8px; }
+    .option-bar-wrap { flex: 1; height: 4px; background: var(--surface2); border-radius: 999px; overflow: hidden; max-width: 300px; }
+    .option-bar { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
+    .option-pct { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--muted); min-width: 36px; }
+ 
+    /* Vote count */
+    .vote-count-wrap { text-align: center; min-width: 70px; }
     .vote-count {
-      font-family: 'Space Mono', monospace; font-size: 2.6rem; font-weight: 700;
-      color: var(--text); min-height: 1.2em; text-align: center;
-      cursor: pointer; border-bottom: 2px dashed transparent;
-      transition: border-color 0.15s; border-radius: 4px; padding: 0 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.8rem; font-weight: 600; color: var(--text);
+      cursor: pointer; display: block; line-height: 1;
+      border-bottom: 1px dashed transparent; transition: border-color 0.15s;
+      padding-bottom: 2px;
     }
-    .vote-count:hover { border-color: var(--accent); }
+    .vote-count:hover { border-color: var(--accent); color: var(--accent); }
+    .vote-count-hint { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.04em; margin-top: 2px; }
     .vote-count-input {
-      font-family: 'Space Mono', monospace; font-size: 2.6rem; font-weight: 700;
-      background: var(--surface2); border: 2px solid var(--accent); border-radius: 8px;
-      color: var(--text); text-align: center; width: 100%; outline: none;
+      font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 600;
+      background: var(--surface2); border: 1px solid var(--accent); border-radius: 5px;
+      color: var(--text); text-align: center; width: 80px; outline: none;
       padding: 2px 4px; -moz-appearance: textfield;
     }
     .vote-count-input::-webkit-outer-spin-button,
-    .vote-count-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    .vote-count-hint { font-size: 0.68rem; color: var(--muted); text-align: center; margin-top: -6px; }
-
-    .pct-wrap { width: 100%; background: var(--surface2); border-radius: 999px; height: 5px; overflow: hidden; }
-    .pct-bar { height: 100%; border-radius: 999px; transition: width 0.35s ease; }
-    .pct-label { font-size: 0.72rem; color: var(--muted); font-family: 'Space Mono', monospace; text-align: center; }
-
-    .vote-btns { display: flex; gap: 10px; }
+    .vote-count-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+ 
+    /* Vote buttons */
+    .vote-btns { display: flex; align-items: center; gap: 6px; }
     .vote-btn {
-      width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer;
-      font-size: 1.4rem; font-weight: 700; display: flex; align-items: center;
-      justify-content: center; transition: transform 0.1s, opacity 0.15s; line-height: 1;
+      width: 34px; height: 34px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text2); cursor: pointer;
+      font-size: 1.2rem; font-weight: 600; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; line-height: 1; flex-shrink: 0;
     }
-    .vote-btn:active { transform: scale(0.88); }
-    .vote-btn.plus { background: rgba(62,207,142,0.15); color: var(--plus); border: 1.5px solid rgba(62,207,142,0.3); }
-    .vote-btn.plus:hover { background: rgba(62,207,142,0.25); }
-    .vote-btn.minus { background: rgba(247,112,106,0.1); color: var(--minus); border: 1.5px solid rgba(247,112,106,0.25); }
-    .vote-btn.minus:hover { background: rgba(247,112,106,0.2); }
-    .vote-btn.minus:disabled { opacity: 0.3; cursor: not-allowed; }
-
-    /* ── Chart ── */
-    .chart-section {
-      margin-top: 48px;
-      width: 100%;
-      max-width: 700px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 28px 24px 24px;
-      transition: background 0.3s;
+    .vote-btn:hover { border-color: var(--border2); background: var(--surface); }
+    .vote-btn:active { transform: scale(0.93); }
+    .vote-btn.plus:hover { border-color: var(--positive); color: var(--positive); background: var(--surface); }
+    .vote-btn.minus:hover { border-color: var(--negative); color: var(--negative); background: var(--surface); }
+    .vote-btn.minus:disabled { opacity: 0.25; cursor: not-allowed; pointer-events: none; }
+ 
+    .delete-btn {
+      position: absolute; top: 10px; right: 10px;
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 0.85rem; padding: 2px 5px; border-radius: 4px;
+      transition: color 0.15s, background 0.15s; line-height: 1;
     }
-    .chart-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
+    .delete-btn:hover { color: var(--negative); background: var(--surface2); }
+ 
+    /* ── Add option form ── */
+    .add-form {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 40px;
     }
-    .chart-title { font-size: 0.85rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-    .chart-controls { display: flex; gap: 6px; flex-wrap: wrap; }
-    .toggle-btn {
-      background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
-      border-radius: 8px; padding: 5px 14px; font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
-    }
-    .toggle-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .toggle-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
-
-    .export-img-btn {
-      background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
-      border-radius: 8px; padding: 5px 12px; font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
-      display: flex; align-items: center; gap: 5px;
-    }
-    .export-img-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .export-img-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-
-    #chartCanvas { width: 100% !important; border-radius: 8px; }
-
-    /* ── Bottom ── */
-    .add-section { margin-top: 40px; display: flex; gap: 10px; width: 100%; max-width: 400px; }
     .add-input {
-      flex: 1; background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; color: var(--text); font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.95rem; padding: 12px 16px; outline: none; transition: border-color 0.2s, background 0.3s;
+      flex: 1; max-width: 340px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 7px;
+      color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.9rem;
+      padding: 10px 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      box-shadow: 0 1px 2px var(--shadow);
     }
-    .add-input:focus { border-color: var(--accent); }
+    .add-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lt); }
     .add-input::placeholder { color: var(--muted); }
     .add-btn {
-      background: var(--accent); color: #fff; border: none; border-radius: 12px;
-      padding: 12px 20px; font-family: 'Space Grotesk', sans-serif; font-size: 0.95rem;
-      font-weight: 600; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+      background: var(--accent); color: #fff; border: none; border-radius: 7px;
+      padding: 10px 20px; font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 600;
+      cursor: pointer; transition: opacity 0.15s, transform 0.1s; letter-spacing: 0.02em;
     }
     .add-btn:hover { opacity: 0.88; }
-    .add-btn:active { transform: scale(0.96); }
-
-    .action-row { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-    .reset-btn {
-      background: none; border: 1px solid var(--border); color: var(--muted);
-      border-radius: 10px; padding: 9px 22px; font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.85rem; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+    .add-btn:active { transform: scale(0.97); }
+ 
+    /* ── Chart ── */
+    .chart-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 28px 24px 20px;
+      box-shadow: 0 1px 3px var(--shadow);
+      margin-bottom: 40px;
     }
-    .reset-btn:hover { border-color: var(--minus); color: var(--minus); }
-    .excel-btn {
-      background: none; border: 1px solid #1e6b3e; color: var(--plus);
-      border-radius: 10px; padding: 9px 22px; font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
-      display: flex; align-items: center; gap: 7px;
+    .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    .chart-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem; font-weight: 600; color: var(--text);
     }
-    .excel-btn:hover { background: rgba(62,207,142,0.1); }
-    .excel-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .empty {
-      color: var(--muted); font-size: 0.9rem; text-align: center;
-      padding: 32px; border: 1px dashed var(--border); border-radius: 18px; width: 100%; max-width: 400px;
+    .chart-controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .ctrl-btn {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text2);
+      border-radius: 5px; padding: 5px 12px; font-family: 'Inter', sans-serif;
+      font-size: 0.76rem; font-weight: 500; cursor: pointer; transition: all 0.15s;
+      letter-spacing: 0.02em;
     }
-
+    .ctrl-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .ctrl-btn:hover:not(.active) { border-color: var(--border2); color: var(--text); }
+    .ctrl-divider { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+    #chartCanvas { width: 100% !important; }
+ 
+    /* ── Action row ── */
+    .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .action-btn {
+      background: none; border: 1px solid var(--border); color: var(--text2);
+      border-radius: 7px; padding: 9px 18px; font-family: 'Inter', sans-serif;
+      font-size: 0.82rem; font-weight: 500; cursor: pointer;
+      transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+      letter-spacing: 0.01em;
+    }
+    .action-btn:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+    .action-btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+    .action-btn.danger:hover { border-color: var(--negative); color: var(--negative); }
+    .action-btn.primary-action { border-color: var(--positive); color: var(--positive); }
+    .action-btn.primary-action:hover { background: var(--surface2); }
+ 
+    .empty-state {
+      text-align: center; padding: 48px 24px;
+      color: var(--muted); font-size: 0.88rem;
+      border: 1px dashed var(--border); border-radius: 8px;
+    }
+    .empty-state strong { display: block; font-size: 1rem; color: var(--text2); margin-bottom: 6px; }
+ 
+    /* ── Toast ── */
     .toast {
-      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: var(--plus); color: #fff; font-weight: 600; font-size: 0.85rem;
-      padding: 10px 22px; border-radius: 999px; opacity: 0;
-      transition: opacity 0.25s, transform 0.25s; pointer-events: none; white-space: nowrap;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(12px);
+      background: var(--text); color: var(--bg);
+      font-size: 0.82rem; font-weight: 500; padding: 9px 20px;
+      border-radius: 6px; opacity: 0; transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none; white-space: nowrap; letter-spacing: 0.02em;
+      box-shadow: 0 4px 16px var(--shadow2);
     }
-    [data-theme="light"] .toast { color: #0a2e1f; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-    @media (max-width: 480px) { .option-card { max-width: 100%; } }
+ 
+    @media (max-width: 600px) {
+      .option-row { grid-template-columns: auto 1fr auto auto; gap: 10px; }
+      .vote-count-wrap { min-width: 54px; }
+      .vote-count { font-size: 1.4rem; }
+      .navbar { padding: 0 16px; }
+      .page { padding: 32px 16px 0; }
+    }
   </style>
 </head>
 <body>
-
-<div class="top-bar">
-  <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ Light</button>
-</div>
-
-<header>
-  <h1>Vote <span>Counter</span></h1>
-  <p>Click a label to rename · Click the dot to change color</p>
-</header>
-
-<div class="total-banner">
-  <span class="total-label">Total votes</span>
-  <span class="total-count" id="total">0</span>
-</div>
-
-<div class="options-grid" id="grid"></div>
-
-<div class="chart-section">
-  <div class="chart-header">
-    <span class="chart-title">📊 Results Chart</span>
-    <div class="chart-controls">
-      <button class="toggle-btn active" id="btnBar" onclick="setChartType('bar')">Bar</button>
-      <button class="toggle-btn" id="btnPie" onclick="setChartType('pie')">Pie</button>
-      <button class="export-img-btn" id="exportImgBtn" onclick="exportChartImage()" disabled>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        Save Image
-      </button>
+ 
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-brand">Vote<span>Tracker</span></div>
+  <div class="navbar-right">
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">Dark Mode</button>
+  </div>
+</nav>
+ 
+<div class="page">
+ 
+  <!-- Header -->
+  <div class="page-header">
+    <h1>Results Dashboard</h1>
+    <p>Click any label to rename &middot; Click the count to enter a value manually &middot; Click the color bar to change color</p>
+    <div class="header-rule"></div>
+  </div>
+ 
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Votes</div>
+      <div class="stat-value" id="totalVotes">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Options</div>
+      <div class="stat-value" id="totalOptions">2</div>
+    </div>
+    <div class="stat-card" id="leadingCard">
+      <div class="stat-label">Leading</div>
+      <div class="stat-value" id="leadingOption" style="font-size:1rem;padding-top:6px;font-family:'Inter',sans-serif">—</div>
     </div>
   </div>
-  <canvas id="chartCanvas" height="300"></canvas>
-</div>
-
-<div class="add-section">
-  <input class="add-input" id="newOptionInput" type="text" placeholder="New option name…" maxlength="40" />
-  <button class="add-btn" onclick="addOption()">+ Add</button>
-</div>
-
-<div class="action-row">
-  <button class="reset-btn" onclick="resetAll()">Reset all votes</button>
-  <button class="excel-btn" id="excelBtn" onclick="exportExcel()" disabled>
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
-    Export to Excel
-  </button>
-</div>
-
+ 
+  <!-- Options -->
+  <div class="section-label">Options</div>
+  <div class="options-grid" id="grid"></div>
+ 
+  <!-- Add form -->
+  <div class="add-form">
+    <input class="add-input" id="newOptionInput" type="text" placeholder="Add a new option…" maxlength="40" />
+    <button class="add-btn" onclick="addOption()">Add Option</button>
+  </div>
+ 
+  <!-- Chart -->
+  <div class="section-label">Chart</div>
+  <div class="chart-section">
+    <div class="chart-header">
+      <div class="chart-title">Vote Distribution</div>
+      <div class="chart-controls">
+        <button class="ctrl-btn active" id="btnBar" onclick="setChartType('bar')">Bar</button>
+        <button class="ctrl-btn" id="btnPie" onclick="setChartType('pie')">Pie</button>
+        <div class="ctrl-divider"></div>
+        <button class="ctrl-btn" id="exportImgBtn" onclick="exportChartImage()" disabled>↓ PNG</button>
+      </div>
+    </div>
+    <canvas id="chartCanvas" height="280"></canvas>
+  </div>
+ 
+  <!-- Actions -->
+  <div class="section-label">Export</div>
+  <div class="action-row">
+    <button class="action-btn danger" onclick="resetAll()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.2"/></svg>
+      Reset All Votes
+    </button>
+    <button class="action-btn primary-action" id="excelBtn" onclick="exportExcel()" disabled>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Export to Excel
+    </button>
+  </div>
+ 
+</div><!-- /page -->
+ 
 <div class="toast" id="toast"></div>
-
+ 
 <script>
-  const DEFAULT_COLORS = ['#7c6af7','#3ecf8e','#f7706a','#f7c96a','#6ac8f7','#f76ab0','#a8f76a','#f7926a','#6af7d4','#c46af7'];
-
+  const DEFAULT_COLORS = ['#2c4a7c','#1e5c38','#7c2c2c','#5c4a1e','#1e4a5c','#4a1e5c','#2c5c4a','#5c2c4a','#3a5c1e','#1e3a5c'];
+ 
   let options = [
     { id: 1, label: 'Yes', votes: 0, color: DEFAULT_COLORS[0] },
     { id: 2, label: 'No',  votes: 0, color: DEFAULT_COLORS[1] },
   ];
   let nextId = 3;
   let chartType = 'bar';
-  let isDark = true;
-
-  function totalVotes() { return options.reduce((s, o) => s + o.votes, 0); }
+  let isDark = false;
+ 
+  function totalVotes() { return options.reduce((s,o) => s + o.votes, 0); }
   function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+ 
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2400);
   }
-
+ 
   function toggleTheme() {
     isDark = !isDark;
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    document.getElementById('themeBtn').textContent = isDark ? '☀️ Light' : '🌙 Dark';
+    document.getElementById('themeBtn').textContent = isDark ? 'Light Mode' : 'Dark Mode';
     renderChart();
   }
-
+ 
   function render() {
-    const grid = document.getElementById('grid');
     const total = totalVotes();
-    document.getElementById('total').textContent = total;
+    document.getElementById('totalVotes').textContent = total;
+    document.getElementById('totalOptions').textContent = options.length;
     document.getElementById('excelBtn').disabled = total === 0;
     document.getElementById('exportImgBtn').disabled = total === 0;
-
+ 
+    // Leading option
+    const leading = [...options].sort((a,b) => b.votes - a.votes)[0];
+    document.getElementById('leadingOption').textContent =
+      (leading && leading.votes > 0) ? leading.label : '—';
+ 
+    const grid = document.getElementById('grid');
     grid.innerHTML = '';
+ 
     if (options.length === 0) {
-      grid.innerHTML = '<div class="empty">No options yet — add one below.</div>';
+      grid.innerHTML = '<div class="empty-state"><strong>No options yet</strong>Add your first option below.</div>';
       renderChart(); return;
     }
-
-    options.forEach((opt, i) => {
+ 
+    options.forEach((opt) => {
       const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0;
-      const card = document.createElement('div');
-      card.className = 'option-card';
-      card.id = `card-${opt.id}`;
-
-      card.innerHTML = `
-        <button class="delete-btn" onclick="deleteOption(${opt.id})" title="Remove">✕</button>
-        <div class="color-row">
-          <div class="color-swatch" style="background:${opt.color}" title="Change color">
-            <input type="color" value="${opt.color}" oninput="changeColor(${opt.id}, this.value)" />
-          </div>
-          <span class="option-label" onclick="startEdit(${opt.id})" title="Click to rename">${escHtml(opt.label)}</span>
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.id = `row-${opt.id}`;
+ 
+      row.innerHTML = `
+        <div class="color-swatch" style="background:${opt.color}" title="Change colour">
+          <input type="color" value="${opt.color}" oninput="changeColor(${opt.id}, this.value)" />
         </div>
-        <div class="vote-count" onclick="startEditVotes(${opt.id})" title="Click to set manually">${opt.votes}</div>
-        <div class="vote-count-hint">tap to edit</div>
-        <div style="width:100%">
-          <div class="pct-wrap"><div class="pct-bar" style="width:${pct}%;background:${opt.color}"></div></div>
-          <div class="pct-label" style="margin-top:5px">${pct}%</div>
+        <div class="option-info">
+          <span class="option-label" onclick="startEdit(${opt.id})" title="Click to rename">
+            ${escHtml(opt.label)}
+            <span class="edit-icon">✎</span>
+          </span>
+          <div class="option-bar-row">
+            <div class="option-bar-wrap">
+              <div class="option-bar" style="width:${pct}%;background:${opt.color}"></div>
+            </div>
+            <span class="option-pct">${pct}%</span>
+          </div>
+        </div>
+        <div class="vote-count-wrap">
+          <span class="vote-count" onclick="startEditVotes(${opt.id})" title="Click to set manually">${opt.votes}</span>
+          <div class="vote-count-hint">click to edit</div>
         </div>
         <div class="vote-btns">
-          <button class="vote-btn minus" onclick="vote(${opt.id}, -1)" ${opt.votes===0?'disabled':''}>−</button>
-          <button class="vote-btn plus"  onclick="vote(${opt.id},  1)">+</button>
+          <button class="vote-btn minus" onclick="vote(${opt.id},-1)" ${opt.votes===0?'disabled':''}>−</button>
+          <button class="vote-btn plus"  onclick="vote(${opt.id}, 1)">+</button>
         </div>
+        <button class="delete-btn" onclick="deleteOption(${opt.id})" title="Remove">✕</button>
       `;
-      grid.appendChild(card);
+      grid.appendChild(row);
     });
-
+ 
     renderChart();
   }
-
+ 
   function changeColor(id, color) {
     const opt = options.find(o => o.id === id);
     if (opt) { opt.color = color; render(); }
   }
-
+ 
   // ── Chart ──
   function setChartType(type) {
     chartType = type;
@@ -424,161 +528,163 @@
     document.getElementById('btnPie').classList.toggle('active', type === 'pie');
     renderChart();
   }
-
-  function getThemeColors() {
-    const dark = document.documentElement.getAttribute('data-theme') !== 'light';
+ 
+  function getTC() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
     return {
-      grid:    dark ? '#2e2e3e' : '#dddde8',
-      label:   dark ? '#7a7a9a' : '#888899',
-      value:   dark ? '#e8e8f0' : '#1a1a2e',
-      bg:      dark ? '#1a1a22' : '#ffffff',
-      empty:   dark ? '#7a7a9a' : '#aaaabc',
+      grid:  dark ? '#2e2c28' : '#e8e4dc',
+      label: dark ? '#706c65' : '#9a9690',
+      value: dark ? '#e8e4dc' : '#1a1810',
+      bg:    dark ? '#1e1c19' : '#ffffff',
+      empty: dark ? '#706c65' : '#b0ab9e',
     };
   }
-
+ 
   function renderChart() {
     const canvas = document.getElementById('chartCanvas');
     const ctx = canvas.getContext('2d');
-    const W = canvas.offsetWidth || 640;
-    const H = 300;
-    canvas.width  = W * window.devicePixelRatio;
-    canvas.height = H * window.devicePixelRatio;
+    const W = canvas.offsetWidth || 700;
+    const H = 280;
+    canvas.width  = W * devicePixelRatio;
+    canvas.height = H * devicePixelRatio;
     canvas.style.height = H + 'px';
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-
-    const tc = getThemeColors();
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = tc.bg;
-    ctx.fillRect(0, 0, W, H);
-
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+ 
+    const tc = getTC();
+    ctx.fillStyle = tc.bg; ctx.fillRect(0, 0, W, H);
+ 
     const total = totalVotes();
-    if (options.length === 0 || total === 0) {
+    if (!options.length || total === 0) {
       ctx.fillStyle = tc.empty;
-      ctx.font = '500 14px Space Grotesk, sans-serif';
+      ctx.font = '400 13px Inter, sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('No votes yet — start voting to see the chart', W/2, H/2);
+      ctx.fillText('No votes recorded — results will appear here', W/2, H/2);
       return;
     }
-
-    if (chartType === 'bar') drawBar(ctx, W, H, total, tc);
-    else drawPie(ctx, W, H, total, tc);
+    chartType === 'bar' ? drawBar(ctx, W, H, total, tc) : drawPie(ctx, W, H, total, tc);
   }
-
+ 
   function drawBar(ctx, W, H, total, tc) {
-    const pad = { top: 24, right: 20, bottom: 64, left: 44 };
+    const pad = { top: 28, right: 24, bottom: 68, left: 46 };
     const cW = W - pad.left - pad.right;
     const cH = H - pad.top - pad.bottom;
     const maxV = Math.max(...options.map(o => o.votes), 1);
-    const barW = Math.min(56, (cW / options.length) * 0.52);
+    const barW = Math.min(52, (cW / options.length) * 0.5);
     const gap = cW / options.length;
     const steps = 4;
-
+ 
+    // Grid + axis labels
     for (let i = 0; i <= steps; i++) {
       const y = pad.top + cH - (i / steps) * cH;
       ctx.strokeStyle = tc.grid; ctx.lineWidth = 1;
+      ctx.setLineDash(i === 0 ? [] : [3,3]);
       ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cW, y); ctx.stroke();
-      ctx.fillStyle = tc.label; ctx.font = '11px Space Mono, monospace';
+      ctx.setLineDash([]);
+      ctx.fillStyle = tc.label; ctx.font = '11px JetBrains Mono, monospace';
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(Math.round((i / steps) * maxV), pad.left - 6, y);
+      ctx.fillText(Math.round((i/steps)*maxV), pad.left - 8, y);
     }
-
+ 
+    // Bars
     options.forEach((opt, i) => {
-      const barH = (opt.votes / maxV) * cH;
-      const x = pad.left + gap * i + gap / 2 - barW / 2;
-      const y = pad.top + cH - barH;
-
-      ctx.shadowColor = opt.color; ctx.shadowBlur = 14;
-      const grad = ctx.createLinearGradient(x, y, x, y + barH);
-      grad.addColorStop(0, opt.color);
-      grad.addColorStop(1, opt.color + '44');
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.roundRect(x, y, barW, barH, [5,5,0,0]); ctx.fill();
-      ctx.shadowBlur = 0;
-
-      ctx.fillStyle = tc.value; ctx.font = 'bold 12px Space Mono, monospace';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-      ctx.fillText(opt.votes, x + barW/2, y - 6);
-
-      ctx.fillStyle = tc.label; ctx.font = '500 12px Space Grotesk, sans-serif';
-      const lbl = opt.label.length > 10 ? opt.label.slice(0,9)+'…' : opt.label;
-      ctx.textBaseline = 'top';
+      const bH = Math.max((opt.votes / maxV) * cH, opt.votes > 0 ? 2 : 0);
+      const x = pad.left + gap * i + gap/2 - barW/2;
+      const y = pad.top + cH - bH;
+ 
+      ctx.fillStyle = opt.color;
+      ctx.beginPath(); ctx.roundRect(x, y, barW, bH, [3,3,0,0]); ctx.fill();
+ 
+      // Value
+      if (opt.votes > 0) {
+        ctx.fillStyle = tc.value; ctx.font = '600 12px JetBrains Mono, monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(opt.votes, x + barW/2, y - 4);
+      }
+ 
+      // Label
+      ctx.fillStyle = tc.label; ctx.font = '500 12px Inter, sans-serif';
+      ctx.textBaseline = 'top'; ctx.textAlign = 'center';
+      const lbl = opt.label.length > 11 ? opt.label.slice(0,10)+'…' : opt.label;
       ctx.fillText(lbl, x + barW/2, pad.top + cH + 10);
-
-      const pct = Math.round((opt.votes / total) * 100);
-      ctx.fillStyle = tc.label; ctx.font = '11px Space Mono, monospace';
-      ctx.fillText(pct + '%', x + barW/2, pad.top + cH + 30);
+ 
+      const pct = Math.round((opt.votes/total)*100);
+      ctx.fillStyle = tc.label; ctx.font = '11px JetBrains Mono, monospace';
+      ctx.fillText(pct+'%', x + barW/2, pad.top + cH + 30);
     });
   }
-
+ 
   function drawPie(ctx, W, H, total, tc) {
-    const legendH = Math.ceil(options.length / 4) * 22 + 8;
-    const cy = (H - legendH) / 2 - 4;
-    const cx = W / 2;
-    const r  = Math.min(cx - 20, cy - 10, 110);
-    let angle = -Math.PI / 2;
-
-    options.forEach((opt) => {
-      if (opt.votes === 0) return;
-      const slice = (opt.votes / total) * 2 * Math.PI;
-      const mid = angle + slice / 2;
-      ctx.shadowColor = opt.color; ctx.shadowBlur = 8;
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, angle, angle + slice); ctx.closePath();
+    const rows = Math.ceil(options.length / 4);
+    const legendH = rows * 22 + 12;
+    const availH = H - legendH;
+    const cx = W/2, cy = availH/2;
+    const r = Math.min(cx - 24, cy - 16, 100);
+    let angle = -Math.PI/2;
+ 
+    options.forEach(opt => {
+      if (!opt.votes) return;
+      const slice = (opt.votes/total)*2*Math.PI;
+      const mid = angle + slice/2;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
       ctx.fillStyle = opt.color; ctx.fill();
-      ctx.shadowBlur = 0;
       ctx.strokeStyle = tc.bg; ctx.lineWidth = 2; ctx.stroke();
-
-      const pct = Math.round((opt.votes / total) * 100);
-      if (pct >= 5) {
-        const lx = cx + Math.cos(mid) * r * 0.64;
-        const ly = cy + Math.sin(mid) * r * 0.64;
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Space Mono, monospace';
+      const pct = Math.round((opt.votes/total)*100);
+      if (pct >= 6) {
+        const lx = cx + Math.cos(mid)*r*0.65, ly = cy + Math.sin(mid)*r*0.65;
+        ctx.fillStyle = '#fff'; ctx.font = '600 11px JetBrains Mono, monospace';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(pct + '%', lx, ly);
+        ctx.fillText(pct+'%', lx, ly);
       }
       angle += slice;
     });
-
+ 
+    // Donut hole
+    ctx.beginPath(); ctx.arc(cx, cy, r*0.42, 0, Math.PI*2);
+    ctx.fillStyle = tc.bg; ctx.fill();
+    ctx.fillStyle = tc.value; ctx.font = '600 14px JetBrains Mono, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(total, cx, cy - 6);
+    ctx.fillStyle = tc.label; ctx.font = '10px Inter, sans-serif';
+    ctx.fillText('votes', cx, cy + 10);
+ 
     // Legend
-    const itemW = Math.min(120, (W - 20) / 4);
-    const perRow = Math.floor((W - 20) / itemW);
-    const legendTop = cy + r + 16;
+    const itemW = Math.min(130, (W-20)/4);
+    const perRow = Math.floor((W-20)/itemW);
+    const legendTop = availH + 8;
     options.forEach((opt, i) => {
-      const col = i % perRow, row = Math.floor(i / perRow);
-      const totalItemsW = Math.min(options.length, perRow) * itemW;
-      const startX = (W - totalItemsW) / 2;
-      const lx = startX + col * itemW, ly = legendTop + row * 22;
+      const col = i%perRow, row2 = Math.floor(i/perRow);
+      const totalW = Math.min(options.length, perRow)*itemW;
+      const sx = (W - totalW)/2;
+      const lx = sx + col*itemW, ly = legendTop + row2*22;
       ctx.fillStyle = opt.color;
-      ctx.beginPath(); ctx.roundRect(lx, ly + 1, 11, 11, 2); ctx.fill();
-      ctx.fillStyle = tc.label; ctx.font = '12px Space Grotesk, sans-serif';
+      ctx.fillRect(lx, ly+3, 10, 10);
+      ctx.fillStyle = tc.label; ctx.font = '12px Inter, sans-serif';
       ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      const lbl = opt.label.length > 9 ? opt.label.slice(0,8)+'…' : opt.label;
-      ctx.fillText(lbl, lx + 15, ly + 1);
+      const lbl = opt.label.length > 10 ? opt.label.slice(0,9)+'…' : opt.label;
+      ctx.fillText(lbl, lx+14, ly+2);
     });
   }
-
-  // ── Export chart as PNG ──
+ 
   function exportChartImage() {
     const canvas = document.getElementById('chartCanvas');
-    // Create a download link
     const link = document.createElement('a');
-    const date = new Date().toISOString().slice(0,10);
-    link.download = `vote-chart-${date}.png`;
+    link.download = `vote-chart-${new Date().toISOString().slice(0,10)}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
-    showToast('🖼️ Chart image saved!');
+    showToast('Chart saved as PNG');
   }
-
-  // ── Vote / CRUD ──
+ 
+  // ── CRUD ──
   function vote(id, delta) {
     const opt = options.find(o => o.id === id); if (!opt) return;
     opt.votes = Math.max(0, opt.votes + delta);
-    const card = document.getElementById(`card-${id}`);
-    if (card) { card.classList.remove('bump'); void card.offsetWidth; card.classList.add('bump'); }
+    const row = document.getElementById(`row-${id}`);
+    if (row) { row.classList.remove('bump'); void row.offsetWidth; row.classList.add('bump'); }
     render();
   }
-
+ 
   function deleteOption(id) { options = options.filter(o => o.id !== id); render(); }
-
+ 
   function addOption() {
     const inp = document.getElementById('newOptionInput');
     const label = inp.value.trim(); if (!label) { inp.focus(); return; }
@@ -586,69 +692,58 @@
     options.push({ id: nextId++, label, votes: 0, color });
     inp.value = ''; render();
   }
-
-  function resetAll() { options.forEach(o => o.votes = 0); render(); }
-
+ 
+  function resetAll() { options.forEach(o => o.votes = 0); render(); showToast('All votes reset'); }
+ 
   function startEdit(id) {
     const opt = options.find(o => o.id === id); if (!opt) return;
-    const card = document.getElementById(`card-${id}`);
-    const span = card.querySelector('.option-label');
+    const row = document.getElementById(`row-${id}`);
+    const span = row.querySelector('.option-label');
     const inp = document.createElement('input');
     inp.className = 'label-input'; inp.value = opt.label; inp.maxLength = 40;
     span.replaceWith(inp); inp.focus(); inp.select();
     const commit = () => { const v = inp.value.trim(); if (v) opt.label = v; render(); };
     inp.addEventListener('blur', commit);
     inp.addEventListener('keydown', e => {
-      if (e.key === 'Enter') inp.blur();
-      if (e.key === 'Escape') { inp.value = opt.label; inp.blur(); }
+      if (e.key==='Enter') inp.blur();
+      if (e.key==='Escape') { inp.value=opt.label; inp.blur(); }
     });
   }
-
+ 
   function startEditVotes(id) {
     const opt = options.find(o => o.id === id); if (!opt) return;
-    const card = document.getElementById(`card-${id}`);
-    const countEl = card.querySelector('.vote-count');
-    const hintEl  = card.querySelector('.vote-count-hint');
-
+    const row = document.getElementById(`row-${id}`);
+    const span = row.querySelector('.vote-count');
+    const hint = row.querySelector('.vote-count-hint');
     const inp = document.createElement('input');
-    inp.type = 'number'; inp.min = '0'; inp.max = '9999999';
-    inp.className = 'vote-count-input';
-    inp.value = opt.votes;
-    if (hintEl) hintEl.style.visibility = 'hidden';
-    countEl.replaceWith(inp);
-    inp.focus(); inp.select();
-
-    const commit = () => {
-      const v = parseInt(inp.value, 10);
-      opt.votes = (!isNaN(v) && v >= 0) ? v : opt.votes;
-      render();
-    };
+    inp.type='number'; inp.min='0'; inp.max='9999999';
+    inp.className='vote-count-input'; inp.value=opt.votes;
+    if (hint) hint.style.visibility='hidden';
+    span.replaceWith(inp); inp.focus(); inp.select();
+    const commit = () => { const v=parseInt(inp.value,10); opt.votes=(!isNaN(v)&&v>=0)?v:opt.votes; render(); };
     inp.addEventListener('blur', commit);
     inp.addEventListener('keydown', e => {
-      if (e.key === 'Enter') inp.blur();
-      if (e.key === 'Escape') { inp.value = opt.votes; inp.blur(); }
+      if (e.key==='Enter') inp.blur();
+      if (e.key==='Escape') { inp.value=opt.votes; inp.blur(); }
     });
   }
-
-  // ── Excel export ──
+ 
   function exportExcel() {
-    const total = totalVotes(); if (total === 0) return;
-    const wsData = [
-      ['Option','Votes','Percentage','Color'],
-      ...options.map(o => [o.label, o.votes, total>0 ? (o.votes/total*100).toFixed(1)+'%' : '0%', o.color]),
-      [], ['TOTAL', total, '100%', '']
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = [{wch:20},{wch:10},{wch:14},{wch:10}];
+    const total = totalVotes(); if (!total) return;
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['Option','Votes','Share'],
+      ...options.map(o => [o.label, o.votes, total>0?(o.votes/total*100).toFixed(1)+'%':'0%']),
+      [], ['Total', total, '100%']
+    ]);
+    ws['!cols'] = [{wch:22},{wch:10},{wch:10}];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Vote Results');
+    XLSX.utils.book_append_sheet(wb, ws, 'Results');
     XLSX.writeFile(wb, `vote-results-${new Date().toISOString().slice(0,10)}.xlsx`);
-    showToast('✓ Excel file downloaded!');
+    showToast('Exported to Excel');
   }
-
-  document.getElementById('newOptionInput').addEventListener('keydown', e => { if (e.key==='Enter') addOption(); });
+ 
+  document.getElementById('newOptionInput').addEventListener('keydown', e => { if(e.key==='Enter') addOption(); });
   window.addEventListener('resize', renderChart);
-
   render();
 </script>
 </body>
